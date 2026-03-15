@@ -1,4 +1,4 @@
-// src/pages/Auth.js
+// src/pages/Auth.jsx — connected to backend
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -6,10 +6,10 @@ import { useApp } from '../hooks/useApp';
 import styles from './Auth.module.css';
 
 export default function Auth() {
-  const [tab, setTab]         = useState('login');
-  const [regStep, setRegStep] = useState('form'); // 'form' | 'success'
+  const [tab,     setTab]     = useState('login');
+  const [regStep, setRegStep] = useState('form');
   const navigate = useNavigate();
-  const { login, showToast } = useApp();
+  const { login, register, showToast, loading } = useApp();
 
   /* Login state */
   const [lEmail, setLEmail] = useState('');
@@ -21,30 +21,48 @@ export default function Auth() {
   const [rEmail, setREmail] = useState('');
   const [rPw,    setRPw]    = useState('');
 
-  function handleLogin(e) {
+  // ✅ Login — calls backend via AppContext
+  async function handleLogin(e) {
     e.preventDefault();
     if (!lEmail.trim()) { showToast('Please enter your email'); return; }
     if (!lPw)           { showToast('Please enter your password'); return; }
-    const firstName = lEmail.split('@')[0].split('.')[0];
-    login({ firstName: cap(firstName), lastName: '', email: lEmail.trim() });
-    showToast(`Welcome, ${cap(firstName)}! 🌟`);
-    navigate('/dashboard');
+
+    const result = await login({ email: lEmail.trim(), password: lPw });
+
+    if (result.success) {
+      showToast(`Welcome, ${result.firstName}! 🌟`);
+      navigate('/dashboard');
+    } else {
+      showToast(result.message || 'Login failed');
+    }
   }
 
-  function handleRegister(e) {
+  // ✅ Register — calls backend via AppContext
+  async function handleRegister(e) {
     e.preventDefault();
     if (!rFirst.trim() || !rEmail.trim()) { showToast('Please fill required fields'); return; }
     if (rPw.length < 8) { showToast('Password must be at least 8 characters'); return; }
 
-    setRegStep('success');
-    setTimeout(() => {
-      setRFirst(''); setRLast(''); setRPw('');
-      setLEmail(rEmail);     // pre-fill sign-in
-      setREmail('');
-      setRegStep('form');
-      setTab('login');
-      showToast('Account created! Please sign in ✅');
-    }, 2400);
+    const result = await register({
+      firstName: rFirst.trim(),
+      lastName:  rLast.trim(),
+      email:     rEmail.trim(),
+      password:  rPw,
+    });
+
+    if (result.success) {
+      setRegStep('success');
+      setTimeout(() => {
+        setRFirst(''); setRLast(''); setRPw('');
+        setLEmail(rEmail);
+        setREmail('');
+        setRegStep('form');
+        setTab('login');
+        showToast('Account created! Please sign in ✅');
+      }, 2400);
+    } else {
+      showToast(result.message || 'Registration failed');
+    }
   }
 
   return (
@@ -71,7 +89,9 @@ export default function Auth() {
               <label>Password</label>
               <input type="password" placeholder="••••••••" value={lPw} onChange={e => setLPw(e.target.value)} />
             </div>
-            <button type="submit" className="btn-full" style={{ marginTop: 8 }}>Sign In →</button>
+            <button type="submit" className="btn-full" style={{ marginTop: 8 }} disabled={loading}>
+              {loading ? 'Signing in…' : 'Sign In →'}
+            </button>
             <p className={styles.switchLine}>
               No account?{' '}
               <span className={styles.switchLink} onClick={() => setTab('register')}>Register here</span>
@@ -104,7 +124,9 @@ export default function Auth() {
                   <label>Password <span className={styles.hint}>(min 8 characters)</span></label>
                   <input type="password" placeholder="Create a strong password" value={rPw} onChange={e => setRPw(e.target.value)} />
                 </div>
-                <button type="submit" className="btn-full" style={{ marginTop: 4 }}>Create Account →</button>
+                <button type="submit" className="btn-full" style={{ marginTop: 4 }} disabled={loading}>
+                  {loading ? 'Creating…' : 'Create Account →'}
+                </button>
               </div>
               <p className={styles.switchLine}>
                 Already registered?{' '}
@@ -124,5 +146,3 @@ export default function Auth() {
     </div>
   );
 }
-
-function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }

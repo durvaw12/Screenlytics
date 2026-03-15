@@ -1,4 +1,4 @@
-// src/pages/Planner.js
+// src/pages/Planner.jsx — connected to backend
 
 import { useState } from 'react';
 import { useApp } from '../hooks/useApp';
@@ -34,18 +34,48 @@ export default function Planner() {
   const [date,     setDate]     = useState(todayDMY());
   const [time,     setTime]     = useState('09:00');
   const [duration, setDuration] = useState(60);
+  const [saving,   setSaving]   = useState(false);
 
-  function handleAdd(e) {
+  // ✅ Add task — calls backend via AppContext
+  async function handleAdd(e) {
     e.preventDefault();
     if (!title.trim()) { showToast('Please enter a task title'); return; }
     const isoDate = dmyToISO(date);
-    if (!isoDate)      { showToast('Please enter a valid date (DD / MM / YYYY)'); return; }
-    addTask({ id: Date.now(), title: title.trim(), type: selType, isoDate, displayDate: date, time, duration: +duration });
-    setTitle('');
-    showToast('Task added to schedule!');
+    if (!isoDate) { showToast('Please enter a valid date (DD / MM / YYYY)'); return; }
+
+    setSaving(true);
+    const res = await addTask({
+      title:       title.trim(),
+      type:        selType,
+      isoDate,
+      displayDate: date,
+      time,
+      duration:    +duration,
+    });
+    setSaving(false);
+
+    if (res.success) {
+      setTitle('');
+      showToast('Task added to schedule!');
+    } else {
+      showToast(res.message || 'Failed to add task');
+    }
   }
 
-  // Group tasks by date (sorted)
+  // ✅ Delete task — calls backend via AppContext
+  async function handleDelete(id) {
+    const res = await deleteTask(id);
+    if (res.success) showToast('Task removed');
+    else showToast(res.message || 'Failed to delete task');
+  }
+
+  // ✅ Toggle task — calls backend via AppContext
+  async function handleToggle(id) {
+    const res = await toggleTask(id);
+    if (!res.success) showToast(res.message || 'Failed to update task');
+  }
+
+  // Group tasks by date
   const grouped = {};
   [...tasks]
     .sort((a, b) => a.isoDate !== b.isoDate ? a.isoDate.localeCompare(b.isoDate) : a.time.localeCompare(b.time))
@@ -67,7 +97,6 @@ export default function Planner() {
           <form className={styles.addCard} onSubmit={handleAdd}>
             <h2 className={styles.cardTitle}>+ Add Task</h2>
 
-            {/* Type selector */}
             <div className={styles.typeGrid}>
               {Object.entries(TYPE_META).map(([key, meta]) => (
                 <button
@@ -86,7 +115,6 @@ export default function Planner() {
                 <label>Task Title</label>
                 <input type="text" placeholder="e.g. Physics revision" value={title} onChange={e => setTitle(e.target.value)} />
               </div>
-
               <div className="form-group">
                 <label>Date (DD / MM / YYYY)</label>
                 <input
@@ -98,7 +126,6 @@ export default function Planner() {
                   onChange={e => setDate(fmtDateInput(e.target.value))}
                 />
               </div>
-
               <div className={styles.timeRow}>
                 <div className="form-group">
                   <label>Start Time</label>
@@ -114,9 +141,8 @@ export default function Planner() {
                   </select>
                 </div>
               </div>
-
-              <button type="submit" className="btn-primary" style={{ width: '100%' }}>
-                Add to Schedule
+              <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={saving}>
+                {saving ? 'Adding…' : 'Add to Schedule'}
               </button>
             </div>
           </form>
@@ -124,7 +150,6 @@ export default function Planner() {
           {/* Schedule view */}
           <div className={styles.scheduleCard}>
             <h2 className={styles.cardTitle}>📅 Your Schedule</h2>
-
             {tasks.length === 0 ? (
               <div className={styles.empty}>
                 <div className={styles.emptyIcon}>📋</div>
@@ -150,12 +175,10 @@ export default function Planner() {
                             <div className={styles.taskTitle}>{t.title}</div>
                             <div className={styles.taskMeta}>{meta.label} · {t.time} – {endTime} · {t.duration} min</div>
                           </div>
-                          <button className={styles.btnDone}  onClick={() => toggleTask(t.id)}>
+                          <button className={styles.btnDone} onClick={() => handleToggle(t.id)}>
                             {t.done ? '↩ Undo' : '✓ Done'}
                           </button>
-                          <button className={styles.btnDelete} onClick={() => { deleteTask(t.id); showToast('Task removed'); }}>
-                            ×
-                          </button>
+                          <button className={styles.btnDelete} onClick={() => handleDelete(t.id)}>×</button>
                         </div>
                       );
                     })}

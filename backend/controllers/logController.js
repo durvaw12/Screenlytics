@@ -126,3 +126,78 @@ exports.getLogs = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+// ✅ GET ANALYTICS SUMMARY (pre-computed on backend)
+exports.getAnalyticsSummary = async (req, res) => {
+  const userId = req.user.id;
+
+  try {
+    // All logs sorted ASC
+    const [rows] = await db.query(
+      `SELECT 
+        DATE_FORMAT(log_date, '%Y-%m-%d') AS isoDate,
+        total_mins                        AS totalMins,
+        study_mins                        AS study,
+        social_mins                       AS social,
+        ent_mins                          AS ent,
+        other_mins                        AS other,
+        score,
+        category
+       FROM screen_logs
+       WHERE user_id = ?
+       ORDER BY log_date ASC`,
+      [userId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(200).json({ logs: [], summary: null });
+    }
+
+    const logs = rows.map(log => ({
+      ...log,
+      score:       parseFloat(log.score),
+      displayDate: log.isoDate.split('-').reverse().join(' / ')
+    }));
+
+    // Pre-compute summary stats
+    const totalScore = logs.reduce((s, l) => s + l.score,     0);
+    const totalMins  = logs.reduce((s, l) => s + l.totalMins, 0);
+    const avgScore   = parseFloat((totalScore / logs.length).toFixed(2));
+    const avgMins    = Math.round(totalMins / logs.length);
+    const weekTotal  = totalMins;
+    const daysLogged = logs.length;
+
+    const highest = logs.reduce((a, b) => a.totalMins > b.totalMins ? a : b);
+    const lowest  = logs.reduce((a, b) => a.totalMins < b.totalMins ? a : b);
+    const trend   = logs.length >= 2
+      ? parseFloat((logs[logs.length - 1].score - logs[0].score).toFixed(2))
+      : 0;
+
+    res.status(200).json({
+      logs,
+      summary: {
+        avgScore,
+        avgMins,
+        weekTotal,
+        daysLogged,
+        highest: {
+          isoDate:     highest.isoDate,
+          displayDate: highest.displayDate,
+          totalMins:   highest.totalMins,
+          score:       highest.score
+        },
+        lowest: {
+          isoDate:     lowest.isoDate,
+          displayDate: lowest.displayDate,
+          totalMins:   lowest.totalMins,
+          score:       lowest.score
+        },
+        trend
+      }
+    });
+
+  } catch (err) {
+    console.error('Analytics summary error:', err.message);
+    res.status(500).json({ message: 'Server error' });
+  }
+};

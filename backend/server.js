@@ -1,10 +1,13 @@
-const express         = require('express');
-const cors            = require('cors');
-const dotenv          = require('dotenv');
-const db              = require('./config/db');
-const authRoutes      = require('./routes/authRoutes');
-const dashboardRoutes = require('./routes/dashboardRoutes');
-const logRoutes       = require('./routes/logRoutes');       // ✅ Add this
+const express           = require('express');
+const cors              = require('cors');
+const dotenv            = require('dotenv');
+const db                = require('./config/db');
+const authRoutes        = require('./routes/authRoutes');
+const dashboardRoutes   = require('./routes/dashboardRoutes');
+const logRoutes         = require('./routes/logRoutes');
+const plannerRoutes     = require('./routes/plannerRoutes');
+const profileRoutes     = require('./routes/profileRoutes');
+const awarenessRoutes   = require('./routes/awarenessRoutes'); // ✅ Add this
 
 dotenv.config();
 
@@ -12,7 +15,7 @@ const app = express();
 
 const corsOptions = {
   origin: process.env.CLIENT_URL,
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 };
@@ -20,10 +23,13 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
-// ✅ Routes
+// ✅ All Routes
 app.use('/api/auth',      authRoutes);
 app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/logs',      logRoutes);                        // ✅ Add this
+app.use('/api/logs',      logRoutes);
+app.use('/api/planner',   plannerRoutes);
+app.use('/api/profile',   profileRoutes);
+app.use('/api/awareness', awarenessRoutes);                   // ✅ Add this
 
 app.get('/', (req, res) => {
   res.json({ message: 'Screenlytics backend is running 🚀' });

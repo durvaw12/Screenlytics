@@ -1,9 +1,9 @@
-// src/pages/LogTime.js
+// src/pages/LogTime.jsx — connected to backend
 
 import { useState } from 'react';
 import { useApp } from '../hooks/useApp';
 import { calcBurnout } from '../utils/burnout';
-import { todayDMY, dmyToISO, isoToDMY } from '../utils/date';
+import { todayDMY, dmyToISO } from '../utils/date';
 import styles from './LogTime.module.css';
 
 function fmtDateInput(val) {
@@ -28,10 +28,12 @@ export default function LogTime() {
   const [otherH,  setOtherH]  = useState('');
   const [otherM,  setOtherM]  = useState('');
   const [result,  setResult]  = useState(null);
+  const [saving,  setSaving]  = useState(false);
 
   function nv(v) { return parseFloat(v) || 0; }
 
-  function handleSubmit(e) {
+  // ✅ Submit — saves to backend via AppContext
+  async function handleSubmit(e) {
     e.preventDefault();
     const isoDate = dmyToISO(date);
     if (!isoDate) { showToast('Please enter a valid date (DD / MM / YYYY)'); return; }
@@ -44,14 +46,33 @@ export default function LogTime() {
     if (!total) { showToast('Please enter at least one category'); return; }
 
     const { score, category } = calcBurnout(total, sc, em);
-    const entry = { isoDate, displayDate: date, totalMins: total, study: sm, social: sc, ent: em, other: om, score, category };
-    upsertLog(entry);
-    setResult({ score, category });
-    showToast(`✅ Score updated: ${score}/10 — ${category}`);
+    const entry = {
+      isoDate,
+      displayDate: date,
+      totalMins:   total,
+      study:       sm,
+      social:      sc,
+      ent:         em,
+      other:       om,
+      score,
+      category,
+    };
+
+    setSaving(true);
+    const res = await upsertLog(entry);
+    setSaving(false);
+
+    if (res.success) {
+      setResult({ score: res.score, category: res.category });
+      showToast(`✅ Score updated: ${res.score}/10 — ${res.category}`);
+    } else {
+      showToast(res.message || 'Failed to save log');
+    }
   }
 
   const catClass = result
-    ? result.category === 'Excess' ? 'badge-excess' : result.category === 'Mid' ? 'badge-mid' : 'badge-normal'
+    ? result.category === 'Excess' ? 'badge-excess'
+    : result.category === 'Mid'    ? 'badge-mid' : 'badge-normal'
     : '';
 
   return (
@@ -95,8 +116,8 @@ export default function LogTime() {
               </div>
             )}
 
-            <button type="submit" className="btn-primary" style={{ width: '100%' }}>
-              Submit & Recalculate Score →
+            <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={saving}>
+              {saving ? 'Saving…' : 'Submit & Recalculate Score →'}
             </button>
           </form>
 
