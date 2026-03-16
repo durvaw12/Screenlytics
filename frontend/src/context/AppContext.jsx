@@ -1,5 +1,4 @@
-// src/context/AppContext.jsx
-// Global state — fully connected to backend API
+// src/context/AppContext.jsx — fixed user session & logout
 
 import { createContext, useState, useEffect, useCallback } from 'react';
 import { authAPI, logsAPI, plannerAPI } from '../utils/api';
@@ -16,19 +15,22 @@ export function AppProvider({ children }) {
   const [toast,        setToast]        = useState({ visible: false, msg: '' });
   const [loading,      setLoading]      = useState(false);
 
-  // ✅ Dark mode effect
+  // ✅ Dark mode
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
     localStorage.setItem('sl-dark', darkMode);
   }, [darkMode]);
 
-  // ✅ On app load — restore session from localStorage token
+  // ✅ Restore session on page refresh
   useEffect(() => {
     const token    = localStorage.getItem('sl-token');
     const userData = localStorage.getItem('sl-user');
     if (token && userData) {
       try {
-        setUser(JSON.parse(userData));
+        const parsed = JSON.parse(userData);
+        // ✅ Ensure lastName is never undefined
+        parsed.lastName = parsed.lastName || '';
+        setUser(parsed);
       } catch {
         localStorage.removeItem('sl-token');
         localStorage.removeItem('sl-user');
@@ -36,20 +38,18 @@ export function AppProvider({ children }) {
     }
   }, []);
 
-  // ✅ Load logs & tasks when user logs in
+  // ✅ Load data when user is set
   useEffect(() => {
     if (!user) return;
     fetchLogs();
     fetchTasks();
-  }, [user]);
+  }, [user?.id]); // only re-run when user ID changes, not on every user update
 
-  // ✅ Toast helper
   const showToast = useCallback((msg) => {
     setToast({ visible: true, msg });
     setTimeout(() => setToast({ visible: false, msg: '' }), 3200);
   }, []);
 
-  // ✅ Fetch logs from backend
   const fetchLogs = useCallback(async () => {
     try {
       const data = await logsAPI.getAll();
@@ -64,7 +64,6 @@ export function AppProvider({ children }) {
     }
   }, []);
 
-  // ✅ Fetch tasks from backend
   const fetchTasks = useCallback(async () => {
     try {
       const data = await plannerAPI.getAll();
@@ -80,13 +79,15 @@ export function AppProvider({ children }) {
     try {
       const data = await authAPI.login({ email, password });
       localStorage.setItem('sl-token', data.token);
+
       const nameParts = data.user.name.trim().split(' ');
       const userObj = {
         id:        data.user.id,
         firstName: nameParts[0] || '',
-        lastName:  nameParts.slice(1).join(' ') || '',
+        lastName:  nameParts.slice(1).join(' ') || '', // ✅ always a string
         email:     data.user.email,
       };
+
       localStorage.setItem('sl-user', JSON.stringify(userObj));
       setUser(userObj);
       return { success: true, firstName: userObj.firstName };
@@ -110,7 +111,7 @@ export function AppProvider({ children }) {
     }
   }, []);
 
-  // ✅ LOGOUT
+  // ✅ LOGOUT — fully clears everything
   const logout = useCallback(() => {
     localStorage.removeItem('sl-token');
     localStorage.removeItem('sl-user');
@@ -138,7 +139,6 @@ export function AppProvider({ children }) {
       setBurnoutCat(data.category);
       return { success: true, score: data.score, category: data.category };
     } catch (err) {
-      console.error('Upsert log error:', err.message);
       return { success: false, message: err.message };
     }
   }, []);
@@ -150,7 +150,6 @@ export function AppProvider({ children }) {
       setTasks((prev) => [...prev, data.task]);
       return { success: true };
     } catch (err) {
-      console.error('Add task error:', err.message);
       return { success: false, message: err.message };
     }
   }, []);
@@ -162,7 +161,6 @@ export function AppProvider({ children }) {
       setTasks((prev) => prev.filter((t) => t.id !== id));
       return { success: true };
     } catch (err) {
-      console.error('Delete task error:', err.message);
       return { success: false, message: err.message };
     }
   }, []);
@@ -176,15 +174,18 @@ export function AppProvider({ children }) {
       );
       return { success: true };
     } catch (err) {
-      console.error('Toggle task error:', err.message);
       return { success: false, message: err.message };
     }
   }, []);
 
-  // ✅ UPDATE USER
+  // ✅ UPDATE USER — also syncs localStorage
   const updateUser = useCallback((patch) => {
     setUser((u) => {
-      const updated = { ...u, ...patch };
+      const updated = {
+        ...u,
+        ...patch,
+        lastName: patch.lastName || u?.lastName || '',
+      };
       localStorage.setItem('sl-user', JSON.stringify(updated));
       return updated;
     });

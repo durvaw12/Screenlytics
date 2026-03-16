@@ -1,4 +1,4 @@
-// src/components/Navbar.js
+// src/components/Navbar.jsx — fixed crash when lastName is empty
 
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useState } from 'react';
@@ -15,12 +15,13 @@ const NAV_LINKS = [
 
 export default function Navbar() {
   const { user, logout, darkMode, toggleDark, showToast } = useApp();
-  const navigate  = useNavigate();
-  const location  = useLocation();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [ddOpen, setDdOpen] = useState(false);
 
+  // ✅ Safe initials — handles missing/empty lastName
   const initials = user
-    ? (user.firstName[0] + (user.lastName[0] || '')).toUpperCase()
+    ? ((user.firstName?.[0] || '') + (user.lastName?.[0] || '')).toUpperCase() || '?'
     : '';
 
   function handleLogout() {
@@ -28,6 +29,11 @@ export default function Navbar() {
     setDdOpen(false);
     showToast('Signed out successfully');
     navigate('/');
+  }
+
+  function handleProfile() {
+    setDdOpen(false);
+    navigate('/profile');
   }
 
   return (
@@ -65,28 +71,33 @@ export default function Navbar() {
         </button>
 
         {user ? (
-          /* Avatar + dropdown */
           <div className={styles.avatarWrap}>
             <div
               className={styles.avatar}
               onClick={() => setDdOpen((v) => !v)}
               tabIndex={0}
-              onBlur={() => setTimeout(() => setDdOpen(false), 150)}
+              onBlur={() => setTimeout(() => setDdOpen(false), 200)}
             >
               {initials}
             </div>
             {ddOpen && (
               <div className={styles.dropdown}>
+                {/* ✅ Profile name display */}
+                <div className={styles.ddUser}>
+                  <div className={styles.ddName}>{user.firstName} {user.lastName}</div>
+                  <div className={styles.ddEmail}>{user.email}</div>
+                </div>
+                <div className={styles.ddSep} />
                 <button
                   className={styles.ddItem}
-                  onClick={() => { setDdOpen(false); navigate('/profile'); }}
+                  onMouseDown={handleProfile}
                 >
                   👤&nbsp; My Profile
                 </button>
                 <div className={styles.ddSep} />
                 <button
                   className={`${styles.ddItem} ${styles.ddLogout}`}
-                  onClick={handleLogout}
+                  onMouseDown={handleLogout}
                 >
                   🚪&nbsp; Sign Out
                 </button>
