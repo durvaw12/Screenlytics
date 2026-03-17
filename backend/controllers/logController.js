@@ -1,90 +1,80 @@
 const db = require('../config/db');
 
-// ✅ Helper: replicate frontend calcBurnout logic
+// ✅ Helper: replicate frontend calcBurnout logic exactly
 function calcBurnout(totalMins, socialMins, entMins) {
-  // Score based on total screen time
-  let score;
-  if (totalMins <= 120)      score = parseFloat((totalMins / 40).toFixed(1));
-  else if (totalMins <= 300) score = parseFloat((3 + ((totalMins - 120) / 60)).toFixed(1));
-  else                       score = parseFloat(Math.min(10, 6 + ((totalMins - 300) / 100)).toFixed(1));
+  const h = totalMins / 60;
+  let base;
+  if      (h <= 2) base = h * 1.0;
+  else if (h <= 4) base = 2 + (h - 2) * 1.2;
+  else if (h <= 6) base = 4.4 + (h - 4) * 1.5;
+  else if (h <= 8) base = 7.4 + (h - 6) * 1.0;
+  else             base = 9.4 + (h - 8) * 0.3;
 
-  // Bump score if social/entertainment is dominant
-  const highRiskMins = socialMins + entMins;
-  if (highRiskMins > totalMins * 0.6) score = Math.min(10, score + 1);
-
-  // Category
-  const category =
-    score <= 3 ? 'Normal' :
-    score <= 6 ? 'Mid'    : 'Excess';
-
+  const passive = (socialMins + entMins) / (totalMins || 1);
+  const bonus   = passive > 0.6 ? 0.8 : passive > 0.4 ? 0.4 : 0;
+  const score   = Math.round(Math.min(10, Math.max(1, base + bonus)) * 10) / 10;
+  const category = score <= 3.5 ? 'Normal' : score <= 6.5 ? 'Mid' : 'Excess';
   return { score, category };
 }
 
-// ✅ UPSERT LOG (Insert or Update for same date)
+// ✅ UPSERT LOG
 exports.upsertLog = async (req, res) => {
   const userId = req.user.id;
   const { isoDate, totalMins, study, social, ent, other } = req.body;
 
-  // Validation
   if (!isoDate || !totalMins) {
     return res.status(400).json({ message: 'Date and total minutes are required' });
   }
-  if (!totalMins || totalMins <= 0) {
+  if (totalMins <= 0) {
     return res.status(400).json({ message: 'Please enter at least one category' });
   }
 
   try {
-    // Calculate burnout score same as frontend
-    const { score, category } = calcBurnout(totalMins, social || 0, ent || 0);
+    const { score, category } = calcBurnout(
+      Number(totalMins),
+      Number(social || 0),
+      Number(ent    || 0)
+    );
 
-    // Check if log already exists for this date
     const [existing] = await db.query(
       'SELECT id FROM screen_logs WHERE user_id = ? AND log_date = ?',
       [userId, isoDate]
     );
 
     if (existing.length > 0) {
-      // ✅ UPDATE existing log
       await db.query(
         `UPDATE screen_logs 
-         SET total_mins = ?, study_mins = ?, social_mins = ?, 
-             ent_mins = ?, other_mins = ?, score = ?, category = ?
-         WHERE user_id = ? AND log_date = ?`,
-        [totalMins, study || 0, social || 0, ent || 0, other || 0, score, category, userId, isoDate]
+         SET total_mins=?, study_mins=?, social_mins=?, ent_mins=?, other_mins=?, score=?, category=?
+         WHERE user_id=? AND log_date=?`,
+        [totalMins, study||0, social||0, ent||0, other||0, score, category, userId, isoDate]
       );
     } else {
-      // ✅ INSERT new log
       await db.query(
         `INSERT INTO screen_logs 
          (user_id, log_date, total_mins, study_mins, social_mins, ent_mins, other_mins, score, category)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [userId, isoDate, totalMins, study || 0, social || 0, ent || 0, other || 0, score, category]
+         VALUES (?,?,?,?,?,?,?,?,?)`,
+        [userId, isoDate, totalMins, study||0, social||0, ent||0, other||0, score, category]
       );
     }
 
-    // Also upsert burnout_scores table with latest score
+    // Upsert burnout_scores
     const [existingBurnout] = await db.query(
-      'SELECT id FROM burnout_scores WHERE user_id = ? AND DATE(recorded_at) = ?',
+      'SELECT id FROM burnout_scores WHERE user_id=? AND DATE(recorded_at)=?',
       [userId, isoDate]
     );
-
     if (existingBurnout.length > 0) {
       await db.query(
-        'UPDATE burnout_scores SET score = ? WHERE user_id = ? AND DATE(recorded_at) = ?',
+        'UPDATE burnout_scores SET score=? WHERE user_id=? AND DATE(recorded_at)=?',
         [score, userId, isoDate]
       );
     } else {
       await db.query(
-        'INSERT INTO burnout_scores (user_id, score, recorded_at) VALUES (?, ?, ?)',
+        'INSERT INTO burnout_scores (user_id, score, recorded_at) VALUES (?,?,?)',
         [userId, score, isoDate]
       );
     }
 
-    res.status(200).json({
-      message: 'Log saved successfully',
-      score,
-      category
-    });
+    res.status(200).json({ message: 'Log saved successfully', score, category });
 
   } catch (err) {
     console.error('Upsert log error:', err.message);
@@ -92,7 +82,7 @@ exports.upsertLog = async (req, res) => {
   }
 };
 
-// ✅ GET ALL LOGS (for history list)
+// ✅ GET ALL LOGS — all numbers parsed correctly
 exports.getLogs = async (req, res) => {
   const userId = req.user.id;
 
@@ -100,22 +90,29 @@ exports.getLogs = async (req, res) => {
     const [rows] = await db.query(
       `SELECT 
         DATE_FORMAT(log_date, '%Y-%m-%d') AS isoDate,
-        total_mins                        AS totalMins,
-        study_mins                        AS study,
-        social_mins                       AS social,
-        ent_mins                          AS ent,
-        other_mins                        AS other,
-        score,
+        CAST(total_mins  AS UNSIGNED)     AS totalMins,
+        CAST(study_mins  AS UNSIGNED)     AS study,
+        CAST(social_mins AS UNSIGNED)     AS social,
+        CAST(ent_mins    AS UNSIGNED)     AS ent,
+        CAST(other_mins  AS UNSIGNED)     AS other,
+        CAST(score       AS DECIMAL(4,2)) AS score,
         category
        FROM screen_logs
        WHERE user_id = ?
-       ORDER BY log_date DESC`,
+       ORDER BY log_date ASC`,
       [userId]
     );
 
-    // Add displayDate (DD / MM / YYYY) for each log
+    // ✅ Force all numeric fields to JS numbers
     const logs = rows.map(log => ({
-      ...log,
+      isoDate:     log.isoDate,
+      totalMins:   Number(log.totalMins),
+      study:       Number(log.study),
+      social:      Number(log.social),
+      ent:         Number(log.ent),
+      other:       Number(log.other),
+      score:       parseFloat(log.score),
+      category:    log.category,
       displayDate: log.isoDate.split('-').reverse().join(' / ')
     }));
 
@@ -127,21 +124,20 @@ exports.getLogs = async (req, res) => {
   }
 };
 
-// ✅ GET ANALYTICS SUMMARY (pre-computed on backend)
+// ✅ GET ANALYTICS SUMMARY
 exports.getAnalyticsSummary = async (req, res) => {
   const userId = req.user.id;
 
   try {
-    // All logs sorted ASC
     const [rows] = await db.query(
       `SELECT 
         DATE_FORMAT(log_date, '%Y-%m-%d') AS isoDate,
-        total_mins                        AS totalMins,
-        study_mins                        AS study,
-        social_mins                       AS social,
-        ent_mins                          AS ent,
-        other_mins                        AS other,
-        score,
+        CAST(total_mins  AS UNSIGNED)     AS totalMins,
+        CAST(study_mins  AS UNSIGNED)     AS study,
+        CAST(social_mins AS UNSIGNED)     AS social,
+        CAST(ent_mins    AS UNSIGNED)     AS ent,
+        CAST(other_mins  AS UNSIGNED)     AS other,
+        CAST(score       AS DECIMAL(4,2)) AS score,
         category
        FROM screen_logs
        WHERE user_id = ?
@@ -154,46 +150,31 @@ exports.getAnalyticsSummary = async (req, res) => {
     }
 
     const logs = rows.map(log => ({
-      ...log,
+      isoDate:     log.isoDate,
+      totalMins:   Number(log.totalMins),
+      study:       Number(log.study),
+      social:      Number(log.social),
+      ent:         Number(log.ent),
+      other:       Number(log.other),
       score:       parseFloat(log.score),
+      category:    log.category,
       displayDate: log.isoDate.split('-').reverse().join(' / ')
     }));
 
-    // Pre-compute summary stats
     const totalScore = logs.reduce((s, l) => s + l.score,     0);
     const totalMins  = logs.reduce((s, l) => s + l.totalMins, 0);
     const avgScore   = parseFloat((totalScore / logs.length).toFixed(2));
     const avgMins    = Math.round(totalMins / logs.length);
-    const weekTotal  = totalMins;
     const daysLogged = logs.length;
-
-    const highest = logs.reduce((a, b) => a.totalMins > b.totalMins ? a : b);
-    const lowest  = logs.reduce((a, b) => a.totalMins < b.totalMins ? a : b);
-    const trend   = logs.length >= 2
+    const highest    = logs.reduce((a, b) => a.totalMins > b.totalMins ? a : b);
+    const lowest     = logs.reduce((a, b) => a.totalMins < b.totalMins ? a : b);
+    const trend      = logs.length >= 2
       ? parseFloat((logs[logs.length - 1].score - logs[0].score).toFixed(2))
       : 0;
 
     res.status(200).json({
       logs,
-      summary: {
-        avgScore,
-        avgMins,
-        weekTotal,
-        daysLogged,
-        highest: {
-          isoDate:     highest.isoDate,
-          displayDate: highest.displayDate,
-          totalMins:   highest.totalMins,
-          score:       highest.score
-        },
-        lowest: {
-          isoDate:     lowest.isoDate,
-          displayDate: lowest.displayDate,
-          totalMins:   lowest.totalMins,
-          score:       lowest.score
-        },
-        trend
-      }
+      summary: { avgScore, avgMins, weekTotal: totalMins, daysLogged, highest, lowest, trend }
     });
 
   } catch (err) {
