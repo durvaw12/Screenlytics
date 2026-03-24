@@ -5,3 +5,10 @@ SELECT * FROM burnout_scores;
 SELECT * FROM notification_settings;
 
 
+
+SHOW TABLES;
+DESCRIBE users;
+DESCRIBE screen_logs;
+DESCRIBE burnout_scores;
+DESCRIBE tasks;
+DESCRIBE notification_settings;

@@ -1,33 +1,3 @@
--- ============================================================
---  SCREENLYTICS — database.sql
---  Purpose  : Build entire database from scratch
---  Run this : ONLY ONCE when setting up the project
---  How      : Open phpMyAdmin → SQL tab → paste → run
---             OR  mysql -u root -p < database.sql
--- ============================================================
-
-
--- ────────────────────────────────────────
---  STEP 1 — Create and select database
--- ────────────────────────────────────────
--- CREATE DATABASE IF NOT EXISTS screenlytics
---   CHARACTER SET utf8mb4
---   COLLATE utf8mb4_unicode_ci;
-
-USE screenlytics;
-
-
--- ────────────────────────────────────────
---  STEP 2 — Drop tables if they exist
---  (safe re-run — order matters because
---   of foreign key constraints)
--- ────────────────────────────────────────
-DROP TABLE IF EXISTS notification_settings;
-DROP TABLE IF EXISTS burnout_scores;
-DROP TABLE IF EXISTS tasks;
-DROP TABLE IF EXISTS screen_logs;
-DROP TABLE IF EXISTS users;
-
 
 -- ============================================================
 --  TABLE 1 : users
@@ -126,13 +96,3 @@ CREATE TABLE notification_settings (
 );
 
 
--- ============================================================
---  VERIFY — uncomment and run to confirm all tables exist
--- ============================================================
--- SHOW TABLES;
--- DESCRIBE users;
--- DESCRIBE screen_logs;
--- DESCRIBE burnout_scores;
--- DESCRIBE tasks;
--- DESCRIBE notification_settings;
--- ============================================================
