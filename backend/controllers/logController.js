@@ -1,6 +1,6 @@
 const db = require('../config/db');
 
-// ✅ Helper: replicate frontend calcBurnout logic exactly
+// Helper: replicate frontend calcBurnout logic exactly
 function calcBurnout(totalMins, socialMins, entMins) {
   const h = totalMins / 60;
   let base;
@@ -17,7 +17,7 @@ function calcBurnout(totalMins, socialMins, entMins) {
   return { score, category };
 }
 
-// ✅ UPSERT LOG
+// UPSERT LOG
 exports.upsertLog = async (req, res) => {
   const userId = req.user.id;
   const { isoDate, totalMins, study, social, ent, other } = req.body;
@@ -82,7 +82,7 @@ exports.upsertLog = async (req, res) => {
   }
 };
 
-// ✅ GET ALL LOGS — all numbers parsed correctly
+// GET ALL LOGS — all numbers parsed correctly
 exports.getLogs = async (req, res) => {
   const userId = req.user.id;
 
@@ -103,7 +103,7 @@ exports.getLogs = async (req, res) => {
       [userId]
     );
 
-    // ✅ Force all numeric fields to JS numbers
+    //Force all numeric fields to JS numbers
     const logs = rows.map(log => ({
       isoDate:     log.isoDate,
       totalMins:   Number(log.totalMins),
@@ -124,7 +124,7 @@ exports.getLogs = async (req, res) => {
   }
 };
 
-// ✅ GET ANALYTICS SUMMARY
+// GET ANALYTICS SUMMARY
 exports.getAnalyticsSummary = async (req, res) => {
   const userId = req.user.id;
 

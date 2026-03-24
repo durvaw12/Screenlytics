@@ -89,7 +89,7 @@ exports.getDashboardSummary = async (req, res) => {
   }
 };
 
-// ✅ Helper: calculate burnout score from total minutes
+// Helper: calculate burnout score from total minutes
 function calculateScoreFromMins(totalMins) {
   // Scale: 0-120 mins = Normal (0-3), 120-300 = Mid (4-6), 300+ = Excess (7-10)
   if (totalMins <= 120) return parseFloat((totalMins / 40).toFixed(1));

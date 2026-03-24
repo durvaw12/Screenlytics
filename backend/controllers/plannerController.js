@@ -2,9 +2,9 @@
 
 const db = require('../config/db');
 
-// ─────────────────────────────────────────
+
 // GET ALL TASKS for logged-in user
-// ─────────────────────────────────────────
+
 exports.getTasks = async (req, res) => {
   const userId = req.user.id;
 
@@ -33,8 +33,8 @@ exports.getTasks = async (req, res) => {
       isoDate:     t.isoDate,
       displayDate: t.displayDate,
       time:        t.time,
-      duration:    Number(t.duration),   // ✅ must be number for end-time calculation
-      done:        t.done === 1          // ✅ must be boolean not 0/1
+      duration:    Number(t.duration),   //must be number for end-time calculation
+      done:        t.done === 1          //must be boolean not 0/1
     }));
 
     res.status(200).json({ tasks });
@@ -45,9 +45,9 @@ exports.getTasks = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────
+
 // ADD TASK
-// ─────────────────────────────────────────
+
 exports.addTask = async (req, res) => {
   const userId = req.user.id;
   const { title, type, isoDate, displayDate, time, duration } = req.body;
@@ -80,7 +80,7 @@ exports.addTask = async (req, res) => {
     res.status(201).json({
       message: 'Task added successfully',
       task: {
-        id:          result.insertId,        // ✅ real DB id, not Date.now()
+        id:          result.insertId,        // real DB id, not Date.now()
         title:       title.trim(),
         type,
         isoDate,
@@ -97,9 +97,9 @@ exports.addTask = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────
+
 // TOGGLE TASK done ↔ undone
-// ─────────────────────────────────────────
+
 exports.toggleTask = async (req, res) => {
   const userId = req.user.id;
   const { id }  = req.params;
@@ -122,7 +122,7 @@ exports.toggleTask = async (req, res) => {
 
     res.status(200).json({
       message: newDone ? 'Task marked as done' : 'Task marked as undone',
-      done:    newDone === 1   // ✅ boolean for frontend
+      done:    newDone === 1   //boolean for frontend
     });
 
   } catch (err) {
@@ -131,9 +131,9 @@ exports.toggleTask = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────
+
 // DELETE TASK
-// ─────────────────────────────────────────
+
 exports.deleteTask = async (req, res) => {
   const userId = req.user.id;
   const { id }  = req.params;

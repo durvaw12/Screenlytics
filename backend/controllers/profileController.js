@@ -3,9 +3,8 @@
 const db     = require('../config/db');
 const bcrypt = require('bcryptjs');
 
-// ─────────────────────────────────────────
 // GET PROFILE — user info + stats + notifications
-// ─────────────────────────────────────────
+
 exports.getProfile = async (req, res) => {
   const userId = req.user.id;
 
@@ -39,7 +38,7 @@ exports.getProfile = async (req, res) => {
     );
 
     // 4. Notification settings
-    //    ✅ Auto-create default row if user has never set preferences
+    // Auto-create default row if user has never set preferences
     const [notifRows] = await db.query(
       'SELECT daily_reminders, burnout_alerts, weekly_report FROM notification_settings WHERE user_id = ?',
       [userId]
@@ -82,9 +81,8 @@ exports.getProfile = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────
 // UPDATE PROFILE (name + email)
-// ─────────────────────────────────────────
+
 exports.updateProfile = async (req, res) => {
   const userId = req.user.id;
   const { firstName, lastName, email } = req.body;
@@ -125,9 +123,8 @@ exports.updateProfile = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────
 // CHANGE PASSWORD
-// ─────────────────────────────────────────
+
 exports.changePassword = async (req, res) => {
   const userId = req.user.id;
   const { currentPassword, newPassword, confirmPassword } = req.body;
@@ -161,10 +158,10 @@ exports.changePassword = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────
+
 // UPDATE NOTIFICATION SETTINGS
-// ✅ Upsert — works whether row exists or not
-// ─────────────────────────────────────────
+// Upsert — works whether row exists or not
+
 exports.updateNotifications = async (req, res) => {
   const userId = req.user.id;
   const { dailyReminders, burnoutAlerts, weeklyReport } = req.body;
@@ -206,9 +203,9 @@ exports.updateNotifications = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────
+
 // EXPORT ALL USER DATA
-// ─────────────────────────────────────────
+
 exports.exportData = async (req, res) => {
   const userId = req.user.id;
 
@@ -250,10 +247,10 @@ exports.exportData = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────
+
 // DELETE ACCOUNT
 // CASCADE in DB auto-deletes all related rows
-// ─────────────────────────────────────────
+
 exports.deleteAccount = async (req, res) => {
   const userId = req.user.id;
 

@@ -1,5 +1,3 @@
-// backend/server.js — final complete version
-
 const express         = require('express');
 const cors            = require('cors');
 const dotenv          = require('dotenv');
@@ -15,7 +13,7 @@ dotenv.config();
 
 const app = express();
 
-// ✅ Allow all localhost dev ports
+// Allow all localhost dev ports
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5173',

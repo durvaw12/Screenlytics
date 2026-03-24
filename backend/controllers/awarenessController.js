@@ -1,4 +1,4 @@
-// ✅ Quotes bank organized by burnout band
+// Quotes bank organized by burnout band
 const QUOTES = {
   normal: [
     { text: "Balance is not something you find, it's something you create.", author: 'Jana Kingsford' },
@@ -26,7 +26,7 @@ const QUOTES = {
   ]
 };
 
-// ✅ GET QUOTE BY BURNOUT SCORE
+// GET QUOTE BY BURNOUT SCORE
 exports.getQuote = async (req, res) => {
   const { score } = req.params;
   const numScore  = parseFloat(score);
@@ -59,7 +59,7 @@ exports.getQuote = async (req, res) => {
   }
 };
 
-// ✅ GET ALL QUOTES FOR A BAND (optional - useful for frontend variety)
+// GET ALL QUOTES FOR A BAND (optional - useful for frontend variety)
 exports.getQuotesByBand = async (req, res) => {
   const { band } = req.params;
 
