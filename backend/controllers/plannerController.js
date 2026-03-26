@@ -3,7 +3,7 @@
 const db = require('../config/db');
 
 
-// GET ALL TASKS for logged-in user
+// GET ALL TASKS for logged-in user get tasks helps us to get only the previously created taks and if we want to add a new task we can use addTask and if we want to toggle the done status of the task we can use toggleTask and if we want to delete the task we can use deleteTask
 
 exports.getTasks = async (req, res) => {
   const userId = req.user.id;
@@ -98,7 +98,7 @@ exports.addTask = async (req, res) => {
 };
 
 
-// TOGGLE TASK done ↔ undone
+// TOGGLE TASK done ↔ undone 
 
 exports.toggleTask = async (req, res) => {
   const userId = req.user.id;

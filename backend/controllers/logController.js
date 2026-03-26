@@ -17,7 +17,7 @@ function calcBurnout(totalMins, socialMins, entMins) {
   return { score, category };
 }
 
-// UPSERT LOG
+// UPSERT LOG— checks if a log for the given date already exists, and updates it if so, or inserts a new one if not. Also upserts the burnout score in a separate table for easier analytics queries.
 exports.upsertLog = async (req, res) => {
   const userId = req.user.id;
   const { isoDate, totalMins, study, social, ent, other } = req.body;
@@ -57,7 +57,7 @@ exports.upsertLog = async (req, res) => {
       );
     }
 
-    // Upsert burnout_scores
+    // Upsert burnout_scores checks if the user already has a score for that date, and updates or inserts accordingly
     const [existingBurnout] = await db.query(
       'SELECT id FROM burnout_scores WHERE user_id=? AND DATE(recorded_at)=?',
       [userId, isoDate]
