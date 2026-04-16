@@ -1,6 +1,9 @@
+// backend/server.js — updated with cron jobs for notifications
+
 const express         = require('express');
 const cors            = require('cors');
 const dotenv          = require('dotenv');
+const cron            = require('node-cron');                          // ← NEW
 const db              = require('./config/db');
 const authRoutes      = require('./routes/authRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
@@ -8,12 +11,13 @@ const logRoutes       = require('./routes/logRoutes');
 const plannerRoutes   = require('./routes/plannerRoutes');
 const profileRoutes   = require('./routes/profileRoutes');
 const awarenessRoutes = require('./routes/awarenessRoutes');
+const { sendDailyReminders, sendWeeklyReports } = require('./controllers/notificationController'); // ← NEW
 
 dotenv.config();
 
 const app = express();
 
-// Allow all localhost dev ports
+// ✅ Allow all localhost dev ports
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5173',
@@ -48,7 +52,27 @@ app.get('/', (req, res) => {
   res.json({ message: 'Screenlytics backend is running 🚀' });
 });
 
+// ─── SCHEDULED JOBS ──────────────────────────────────────────────────────────
+
+// 1. Daily Reminder — every day at 10:17 PM
+cron.schedule('17 22 * * *', () => {
+  console.log('[CRON] Running Daily Reminder job...');
+  sendDailyReminders();
+});
+
+// 2. Weekly Report — every Sunday at 10:17 PM
+cron.schedule('17 22 * * 0', () => {
+  console.log('[CRON] Running Weekly Report job...');
+  sendWeeklyReports();
+});
+
+
+// ─── START SERVER ─────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+console.log('⏰ Daily Reminder scheduled: every day at 10:17 PM');
+console.log('📊 Weekly Report scheduled: every Sunday at 10:17 PM');
+
+
 });

@@ -1,6 +1,10 @@
-const db = require('../config/db');
+// backend/controllers/logController.js
+// Updated: triggers burnout alert email when score >= 7
 
-// Helper: replicate frontend calcBurnout logic exactly
+const db = require('../config/db');
+const { sendBurnoutAlert } = require('./notificationController'); // ← NEW
+
+// ✅ Helper: replicate frontend calcBurnout logic exactly
 function calcBurnout(totalMins, socialMins, entMins) {
   const h = totalMins / 60;
   let base;
@@ -17,7 +21,7 @@ function calcBurnout(totalMins, socialMins, entMins) {
   return { score, category };
 }
 
-// UPSERT LOG— checks if a log for the given date already exists, and updates it if so, or inserts a new one if not. Also upserts the burnout score in a separate table for easier analytics queries.
+// ✅ UPSERT LOG
 exports.upsertLog = async (req, res) => {
   const userId = req.user.id;
   const { isoDate, totalMins, study, social, ent, other } = req.body;
@@ -57,7 +61,7 @@ exports.upsertLog = async (req, res) => {
       );
     }
 
-    // Upsert burnout_scores checks if the user already has a score for that date, and updates or inserts accordingly
+    // Upsert burnout_scores
     const [existingBurnout] = await db.query(
       'SELECT id FROM burnout_scores WHERE user_id=? AND DATE(recorded_at)=?',
       [userId, isoDate]
@@ -74,6 +78,15 @@ exports.upsertLog = async (req, res) => {
       );
     }
 
+    // ─── BURNOUT ALERT: trigger immediately if score >= 7 ─────────────────
+    if (score >= 7) {
+      // Fire-and-forget — don't await, so the API response isn't delayed
+      sendBurnoutAlert(userId, score).catch(err =>
+        console.error('[BurnoutAlert] Failed to send:', err.message)
+      );
+    }
+    // ──────────────────────────────────────────────────────────────────────
+
     res.status(200).json({ message: 'Log saved successfully', score, category });
 
   } catch (err) {
@@ -82,7 +95,7 @@ exports.upsertLog = async (req, res) => {
   }
 };
 
-// GET ALL LOGS — all numbers parsed correctly
+// ✅ GET ALL LOGS — all numbers parsed correctly
 exports.getLogs = async (req, res) => {
   const userId = req.user.id;
 
@@ -103,7 +116,6 @@ exports.getLogs = async (req, res) => {
       [userId]
     );
 
-    //Force all numeric fields to JS numbers
     const logs = rows.map(log => ({
       isoDate:     log.isoDate,
       totalMins:   Number(log.totalMins),
@@ -124,7 +136,7 @@ exports.getLogs = async (req, res) => {
   }
 };
 
-// GET ANALYTICS SUMMARY
+// ✅ GET ANALYTICS SUMMARY
 exports.getAnalyticsSummary = async (req, res) => {
   const userId = req.user.id;
 
