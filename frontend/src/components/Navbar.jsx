@@ -1,4 +1,4 @@
-// src/components/Navbar.jsx — fixed crash when lastName is empty
+// src/components/Navbar.jsx — avatar hidden when user not logged in
 
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useState } from 'react';
@@ -19,7 +19,7 @@ export default function Navbar() {
   const location = useLocation();
   const [ddOpen, setDdOpen] = useState(false);
 
-  // ✅ Safe initials — handles missing/empty lastName
+  // ✅ Safe initials — only computed when user exists
   const initials = user
     ? ((user.firstName?.[0] || '') + (user.lastName?.[0] || '')).toUpperCase() || '?'
     : '';
@@ -60,7 +60,7 @@ export default function Navbar() {
 
       {/* Right side */}
       <div className={styles.right}>
-        {/* Dark mode toggle */}
+        {/* Dark mode toggle — always visible */}
         <button
           className={styles.dmBtn}
           onClick={toggleDark}
@@ -70,6 +70,9 @@ export default function Navbar() {
           <span className={styles.dmThumb}>{darkMode ? '🌙' : '☀️'}</span>
         </button>
 
+        {/* ✅ FIX 4: Only show avatar when user IS logged in.
+            When user is null/undefined (home page, not signed in),
+            show "Get Started" button instead — no avatar icon at all. */}
         {user ? (
           <div className={styles.avatarWrap}>
             <div
@@ -82,7 +85,6 @@ export default function Navbar() {
             </div>
             {ddOpen && (
               <div className={styles.dropdown}>
-                {/* ✅ Profile name display */}
                 <div className={styles.ddUser}>
                   <div className={styles.ddName}>{user.firstName} {user.lastName}</div>
                   <div className={styles.ddEmail}>{user.email}</div>
@@ -105,6 +107,7 @@ export default function Navbar() {
             )}
           </div>
         ) : (
+          /* ✅ FIX 4: Not logged in → show Get Started button, never the avatar */
           <button className={styles.ctaBtn} onClick={() => navigate('/auth')}>
             Get Started
           </button>

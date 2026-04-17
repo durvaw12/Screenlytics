@@ -1,24 +1,18 @@
-// src/pages/LogTime.jsx — connected to backend
+// src/pages/LogTime.jsx — date frozen to today, no editing
 
 import { useState } from 'react';
 import { useApp } from '../hooks/useApp';
 import { calcBurnout } from '../utils/burnout';
-import { todayDMY, dmyToISO } from '../utils/date';
+import { todayISO, isoToDMY } from '../utils/date';
 import styles from './LogTime.module.css';
-
-function fmtDateInput(val) {
-  let v = val.replace(/\D/g, '').slice(0, 8);
-  let o = '';
-  if (v.length > 0) o += v.slice(0, 2);
-  if (v.length > 2) o += ' / ' + v.slice(2, 4);
-  if (v.length > 4) o += ' / ' + v.slice(4, 8);
-  return o;
-}
 
 export default function LogTime() {
   const { logs, upsertLog, showToast } = useApp();
 
-  const [date,    setDate]    = useState(todayDMY());
+  // ✅ FIX 3: Date is frozen — always today. User cannot edit it.
+  const isoDate    = todayISO();
+  const displayDate = isoToDMY(isoDate);
+
   const [studyH,  setStudyH]  = useState('');
   const [studyM,  setStudyM]  = useState('');
   const [socialH, setSocialH] = useState('');
@@ -32,11 +26,8 @@ export default function LogTime() {
 
   function nv(v) { return parseFloat(v) || 0; }
 
-  // ✅ Submit — saves to backend via AppContext
   async function handleSubmit(e) {
     e.preventDefault();
-    const isoDate = dmyToISO(date);
-    if (!isoDate) { showToast('Please enter a valid date (DD / MM / YYYY)'); return; }
 
     const sm = nv(studyH)  * 60 + nv(studyM);
     const sc = nv(socialH) * 60 + nv(socialM);
@@ -48,12 +39,12 @@ export default function LogTime() {
     const { score, category } = calcBurnout(total, sc, em);
     const entry = {
       isoDate,
-      displayDate: date,
-      totalMins:   total,
-      study:       sm,
-      social:      sc,
-      ent:         em,
-      other:       om,
+      displayDate,
+      totalMins: total,
+      study:     sm,
+      social:    sc,
+      ent:       em,
+      other:     om,
       score,
       category,
     };
@@ -88,16 +79,36 @@ export default function LogTime() {
           <form className="card" onSubmit={handleSubmit}>
             <h2 className={styles.cardTitle}>📱 Manual Entry</h2>
 
+            {/* ✅ FIX 3: Frozen read-only date display — no input field, just a styled pill */}
             <div className="form-group" style={{ marginBottom: 18 }}>
-              <label>Date (DD / MM / YYYY)</label>
-              <input
-                type="text"
-                placeholder="DD / MM / YYYY"
-                value={date}
-                maxLength={14}
-                inputMode="numeric"
-                onChange={e => setDate(fmtDateInput(e.target.value))}
-              />
+              <label>Date</label>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '10px 14px',
+                background: 'var(--bg2, #f5f0e8)',
+                border: '1.5px solid var(--color-border-tertiary)',
+                borderRadius: 'var(--border-radius-md)',
+                fontSize: 15,
+                fontWeight: 500,
+                color: 'var(--color-text-primary)',
+                userSelect: 'none',
+              }}>
+                📅 {displayDate}
+                <span style={{
+                  marginLeft: 'auto',
+                  fontSize: 11,
+                  fontWeight: 400,
+                  color: 'var(--color-text-tertiary)',
+                  background: 'var(--color-background-secondary)',
+                  padding: '2px 8px',
+                  borderRadius: 20,
+                  border: '0.5px solid var(--color-border-tertiary)',
+                }}>
+                  Today · locked
+                </span>
+              </div>
             </div>
 
             <div className={styles.catLabel}>Breakdown by Category (hours · minutes)</div>

@@ -54,25 +54,27 @@ app.get('/', (req, res) => {
 
 // ─── SCHEDULED JOBS ──────────────────────────────────────────────────────────
 
-// 1. Daily Reminder — every day at 10:17 PM
-cron.schedule('17 22 * * *', () => {
+// 1. Daily Reminder — every day at 11:45 AM
+cron.schedule('45 11 * * *', () => {
   console.log('[CRON] Running Daily Reminder job...');
   sendDailyReminders();
 });
 
-// 2. Weekly Report — every Sunday at 10:17 PM
-cron.schedule('17 22 * * 0', () => {
+// 2. Weekly Report — every Sunday at 11:45 AM
+cron.schedule('45 11 * * 0', () => {
   console.log('[CRON] Running Weekly Report job...');
   sendWeeklyReports();
 });
+
 
 
 // ─── START SERVER ─────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-console.log('⏰ Daily Reminder scheduled: every day at 10:17 PM');
-console.log('📊 Weekly Report scheduled: every Sunday at 10:17 PM');
+console.log('⏰ Daily Reminder scheduled: every day at 11:45 AM');
+console.log('📊 Weekly Report scheduled: every Sunday at 11:45 AM');
+
 
 
 });

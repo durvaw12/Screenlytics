@@ -1,8 +1,8 @@
-// src/pages/Planner.jsx — connected to backend
+// src/pages/Planner.jsx — date frozen to today, no editing
 
 import { useState } from 'react';
 import { useApp } from '../hooks/useApp';
-import { todayDMY, dmyToISO } from '../utils/date';
+import { todayISO, isoToDMY } from '../utils/date';
 import styles from './Planner.module.css';
 
 const TYPE_META = {
@@ -11,15 +11,6 @@ const TYPE_META = {
   break:    { label: '☀️ Break',    color: '#7a9e6e' },
   nophone:  { label: '📵 No Phone', color: '#c8622a' },
 };
-
-function fmtDateInput(val) {
-  let v = val.replace(/\D/g, '').slice(0, 8);
-  let o = '';
-  if (v.length > 0) o += v.slice(0, 2);
-  if (v.length > 2) o += ' / ' + v.slice(2, 4);
-  if (v.length > 4) o += ' / ' + v.slice(4, 8);
-  return o;
-}
 
 function timeToMins(t) { const [h, m] = t.split(':').map(Number); return h * 60 + m; }
 function minsToTime(m) {
@@ -31,24 +22,24 @@ export default function Planner() {
 
   const [selType,  setSelType]  = useState('study');
   const [title,    setTitle]    = useState('');
-  const [date,     setDate]     = useState(todayDMY());
   const [time,     setTime]     = useState('09:00');
   const [duration, setDuration] = useState(60);
   const [saving,   setSaving]   = useState(false);
 
-  // ✅ Add task — calls backend via AppContext
+  // ✅ FIX 3: Date is frozen to today — always, no user input
+  const isoDate    = todayISO();
+  const displayDate = isoToDMY(isoDate);
+
   async function handleAdd(e) {
     e.preventDefault();
     if (!title.trim()) { showToast('Please enter a task title'); return; }
-    const isoDate = dmyToISO(date);
-    if (!isoDate) { showToast('Please enter a valid date (DD / MM / YYYY)'); return; }
 
     setSaving(true);
     const res = await addTask({
       title:       title.trim(),
       type:        selType,
       isoDate,
-      displayDate: date,
+      displayDate,
       time,
       duration:    +duration,
     });
@@ -62,14 +53,12 @@ export default function Planner() {
     }
   }
 
-  // ✅ Delete task — calls backend via AppContext
   async function handleDelete(id) {
     const res = await deleteTask(id);
     if (res.success) showToast('Task removed');
     else showToast(res.message || 'Failed to delete task');
   }
 
-  // ✅ Toggle task — calls backend via AppContext
   async function handleToggle(id) {
     const res = await toggleTask(id);
     if (!res.success) showToast(res.message || 'Failed to update task');
@@ -115,17 +104,39 @@ export default function Planner() {
                 <label>Task Title</label>
                 <input type="text" placeholder="e.g. Physics revision" value={title} onChange={e => setTitle(e.target.value)} />
               </div>
+
+              {/* ✅ FIX 3: Frozen date display — read-only pill, no input */}
               <div className="form-group">
-                <label>Date (DD / MM / YYYY)</label>
-                <input
-                  type="text"
-                  placeholder="DD / MM / YYYY"
-                  value={date}
-                  maxLength={14}
-                  inputMode="numeric"
-                  onChange={e => setDate(fmtDateInput(e.target.value))}
-                />
+                <label>Date</label>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '10px 14px',
+                  background: 'var(--bg2, #f5f0e8)',
+                  border: '1.5px solid var(--color-border-tertiary)',
+                  borderRadius: 'var(--border-radius-md)',
+                  fontSize: 15,
+                  fontWeight: 500,
+                  color: 'var(--color-text-primary)',
+                  userSelect: 'none',
+                }}>
+                  📅 {displayDate}
+                  <span style={{
+                    marginLeft: 'auto',
+                    fontSize: 11,
+                    fontWeight: 400,
+                    color: 'var(--color-text-tertiary)',
+                    background: 'var(--color-background-secondary)',
+                    padding: '2px 8px',
+                    borderRadius: 20,
+                    border: '0.5px solid var(--color-border-tertiary)',
+                  }}>
+                    Today · locked
+                  </span>
+                </div>
               </div>
+
               <div className={styles.timeRow}>
                 <div className="form-group">
                   <label>Start Time</label>

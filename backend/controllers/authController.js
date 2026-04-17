@@ -1,14 +1,42 @@
-const db = require('../config/db');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+// backend/controllers/authController.js — with server-side name & email validation
 
-// REGISTER
+const db     = require('../config/db');
+const bcrypt = require('bcryptjs');
+const jwt    = require('jsonwebtoken');
+
+// ✅ FIX 1: Name must be letters only — no numbers or special chars (hyphens/apostrophes OK)
+function isValidName(val) {
+  return /^[A-Za-z\s'\-]+$/.test((val || '').trim());
+}
+
+// ✅ FIX 2: Email must have a real domain with a dot extension (.com, .in, .edu etc.)
+function isValidEmail(val) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test((val || '').trim());
+}
+
+// ✅ REGISTER
 exports.register = async (req, res) => {
   const { firstName, lastName, email, password } = req.body;
 
   if (!firstName || !email || !password) {
     return res.status(400).json({ message: 'Please fill all required fields' });
   }
+
+  // ✅ FIX 1: Reject numeric/invalid first name
+  if (!isValidName(firstName)) {
+    return res.status(400).json({ message: 'First name must contain letters only — no numbers allowed' });
+  }
+
+  // ✅ FIX 1: Reject numeric/invalid last name if provided
+  if (lastName && !isValidName(lastName)) {
+    return res.status(400).json({ message: 'Last name must contain letters only — no numbers allowed' });
+  }
+
+  // ✅ FIX 2: Reject emails without a proper domain (e.g. user@test without .com)
+  if (!isValidEmail(email)) {
+    return res.status(400).json({ message: 'Please enter a valid email address (e.g. you@gmail.com)' });
+  }
+
   if (password.length < 8) {
     return res.status(400).json({ message: 'Password must be at least 8 characters' });
   }
@@ -36,12 +64,17 @@ exports.register = async (req, res) => {
   }
 };
 
-// LOGIN
+// ✅ LOGIN
 exports.login = async (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
     return res.status(400).json({ message: 'Please enter email and password' });
+  }
+
+  // ✅ FIX 2: Validate email format on login too
+  if (!isValidEmail(email)) {
+    return res.status(400).json({ message: 'Please enter a valid email address (e.g. you@gmail.com)' });
   }
 
   try {
@@ -69,8 +102,8 @@ exports.login = async (req, res) => {
       message: 'Login successful',
       token,
       user: {
-        id: user.id,
-        name: user.name,
+        id:    user.id,
+        name:  user.name,
         email: user.email
       }
     });

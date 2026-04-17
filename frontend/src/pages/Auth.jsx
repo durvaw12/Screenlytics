@@ -1,9 +1,20 @@
-// src/pages/Auth.jsx — connected to backend
+// src/pages/Auth.jsx — with name & email validation fixes
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../hooks/useApp';
 import styles from './Auth.module.css';
+
+// ✅ FIX 1: Name must only contain letters, spaces, hyphens, apostrophes — NO numbers
+function isValidName(val) {
+  return /^[A-Za-z\s'\-]+$/.test(val.trim());
+}
+
+// ✅ FIX 2: Email must have a proper domain with a dot (e.g. .com, .in, .edu)
+function isValidEmail(val) {
+  // Requires: something @ something . something (min 2 chars after last dot)
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(val.trim());
+}
 
 export default function Auth() {
   const [tab,     setTab]     = useState('login');
@@ -21,11 +32,17 @@ export default function Auth() {
   const [rEmail, setREmail] = useState('');
   const [rPw,    setRPw]    = useState('');
 
-  // ✅ Login — calls backend via AppContext
+  // ✅ Login handler
   async function handleLogin(e) {
     e.preventDefault();
     if (!lEmail.trim()) { showToast('Please enter your email'); return; }
     if (!lPw)           { showToast('Please enter your password'); return; }
+
+    // ✅ FIX 2: Validate email format on login too
+    if (!isValidEmail(lEmail)) {
+      showToast('Please enter a valid email address (e.g. you@gmail.com)');
+      return;
+    }
 
     const result = await login({ email: lEmail.trim(), password: lPw });
 
@@ -37,11 +54,42 @@ export default function Auth() {
     }
   }
 
-  // ✅ Register — calls backend via AppContext
+  // ✅ Register handler — all validations applied
   async function handleRegister(e) {
     e.preventDefault();
-    if (!rFirst.trim() || !rEmail.trim()) { showToast('Please fill required fields'); return; }
-    if (rPw.length < 8) { showToast('Password must be at least 8 characters'); return; }
+
+    if (!rFirst.trim()) {
+      showToast('Please enter your first name');
+      return;
+    }
+
+    // ✅ FIX 1: Block numbers in first name
+    if (!isValidName(rFirst)) {
+      showToast('First name must contain only letters — no numbers allowed');
+      return;
+    }
+
+    // ✅ FIX 1: Block numbers in last name (only if provided)
+    if (rLast.trim() && !isValidName(rLast)) {
+      showToast('Last name must contain only letters — no numbers allowed');
+      return;
+    }
+
+    if (!rEmail.trim()) {
+      showToast('Please enter your email');
+      return;
+    }
+
+    // ✅ FIX 2: Proper email format check — must have .com / .in / .edu etc.
+    if (!isValidEmail(rEmail)) {
+      showToast('Please enter a valid email address (e.g. you@gmail.com)');
+      return;
+    }
+
+    if (rPw.length < 8) {
+      showToast('Password must be at least 8 characters');
+      return;
+    }
 
     const result = await register({
       firstName: rFirst.trim(),
@@ -65,6 +113,19 @@ export default function Auth() {
     }
   }
 
+  // ✅ FIX 1: Block numeric key presses in name fields live
+  function handleNameInput(setter) {
+    return (e) => {
+      const val = e.target.value;
+      // Allow only letters, spaces, hyphens, apostrophes
+      if (/[0-9]/.test(val)) {
+        showToast('Name cannot contain numbers');
+        return;
+      }
+      setter(val);
+    };
+  }
+
   return (
     <div className={styles.page}>
       <div className={styles.card}>
@@ -83,7 +144,12 @@ export default function Auth() {
             <p className={styles.sub}>Sign in to your Screenlytics account</p>
             <div className="form-group">
               <label>Email</label>
-              <input type="email" placeholder="you@university.edu" value={lEmail} onChange={e => setLEmail(e.target.value)} />
+              <input
+                type="text"
+                placeholder="you@university.edu"
+                value={lEmail}
+                onChange={e => setLEmail(e.target.value)}
+              />
             </div>
             <div className="form-group">
               <label>Password</label>
@@ -109,16 +175,34 @@ export default function Auth() {
                 <div className={styles.regRow}>
                   <div className="form-group">
                     <label>First Name</label>
-                    <input type="text" placeholder="Alex" value={rFirst} onChange={e => setRFirst(e.target.value)} />
+                    {/* ✅ FIX 1: letters only, numbers blocked live */}
+                    <input
+                      type="text"
+                      placeholder="Alex"
+                      value={rFirst}
+                      onChange={handleNameInput(setRFirst)}
+                    />
                   </div>
                   <div className="form-group">
                     <label>Last Name</label>
-                    <input type="text" placeholder="Johnson" value={rLast} onChange={e => setRLast(e.target.value)} />
+                    {/* ✅ FIX 1: letters only, numbers blocked live */}
+                    <input
+                      type="text"
+                      placeholder="Johnson"
+                      value={rLast}
+                      onChange={handleNameInput(setRLast)}
+                    />
                   </div>
                 </div>
                 <div className="form-group">
                   <label>Email</label>
-                  <input type="email" placeholder="you@university.edu" value={rEmail} onChange={e => setREmail(e.target.value)} />
+                  {/* ✅ FIX 2: use type="text" so we control validation ourselves */}
+                  <input
+                    type="text"
+                    placeholder="you@university.edu"
+                    value={rEmail}
+                    onChange={e => setREmail(e.target.value)}
+                  />
                 </div>
                 <div className="form-group">
                   <label>Password <span className={styles.hint}>(min 8 characters)</span></label>
